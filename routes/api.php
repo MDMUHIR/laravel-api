@@ -25,8 +25,14 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-Route::post('login', [AuthController::class, 'login']);
-Route::post('register', [AuthController::class, 'register']);
+Route::post('login', [AuthController::class, 'login'])->middleware('throttle:auth');
+Route::post('register', [AuthController::class, 'register'])->middleware('throttle:auth');
+
+// Google OAuth routes need session support
+Route::group(['middleware' => ['web']], function () {
+    Route::get('auth/google', [AuthController::class, 'redirectToGoogle']);
+    Route::get('auth/google/callback', [AuthController::class, 'handleGoogleCallback']);
+});
 
 Route::get('products', [ProductController::class, 'getProducts']);
 Route::get('products/{id}', [ProductController::class, 'getSingleProduct']);
@@ -63,18 +69,18 @@ Route::group(['prefix' => 'admin'], function () {
 Route::group(['middleware' => 'auth:sanctum'], function () {
 
     Route::get('cart', [CartController::class, 'getCart']);
-    Route::post('cart/add', [CartController::class, 'addToCart']);
-    Route::post('cart/update', [CartController::class, 'updateCart']);
+    Route::post('cart/add', [CartController::class, 'addToCart'])->middleware('throttle:sensitive');
+    Route::post('cart/update', [CartController::class, 'updateCart'])->middleware('throttle:sensitive');
     Route::delete('cart/delete/{id}', [CartController::class, 'deleteCart']);
 
     Route::get('wishlist', [WishListController::class, 'getWishList']);
-    Route::post('wishlist/add', [WishListController::class, 'addToWishList']);
+    Route::post('wishlist/add', [WishListController::class, 'addToWishList'])->middleware('throttle:sensitive');
     Route::delete('wishlist/delete/{id}', [WishListController::class, 'deleteWishList']);
 
-    Route::post('verify-coupon', [CouponController::class, 'verifyCoupon']);
+    Route::post('verify-coupon', [CouponController::class, 'verifyCoupon'])->middleware('throttle:sensitive');
 
     Route::get('orders', [OrderController::class, 'getOrder']);
-    Route::post('orders/add', [OrderController::class, 'addOrder']);
+    Route::post('orders/add', [OrderController::class, 'addOrder'])->middleware('throttle:sensitive');
 
     Route::get('logout', [AuthController::class, 'logout']);
     Route::get('user', [AuthController::class, 'user']);

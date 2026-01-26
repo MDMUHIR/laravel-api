@@ -21,6 +21,8 @@ class User extends Authenticatable
         'email',
         'password',
         'type',
+        'google_id',
+        'avatar',
     ];
 
     /**
@@ -43,15 +45,18 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
-    public function wishList() {
+    public function wishList()
+    {
         return $this->hasMany(WishList::class);
     }
 
-    public function cart() {
+    public function cart()
+    {
         return $this->hasMany(Cart::class);
     }
 
-    public function orders() {
+    public function orders()
+    {
         return $this->hasMany(Order::class);
     }
 }

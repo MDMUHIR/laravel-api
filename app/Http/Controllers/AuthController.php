@@ -2,13 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Laravel\Socialite\Facades\Socialite;
 
-class AuthController extends Controller {
-    public function register(Request $request) {
+class AuthController extends Controller
+{
+    public function register(Request $request)
+    {
         $request->validate([
             'name' => 'required|string',
             'email' => 'required|string|unique:users',
@@ -16,7 +20,7 @@ class AuthController extends Controller {
         ]);
 
         $user = new User([
-            'name'  => $request->name,
+            'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
@@ -32,14 +36,16 @@ class AuthController extends Controller {
             return $this->error('Provide proper details');
         }
     }
-    public function login(Request $request) {
+
+    public function login(Request $request)
+    {
         $request->validate([
             'email' => 'required|string|email',
             'password' => 'required|string',
         ]);
 
         $credentials = request(['email', 'password']);
-        if (!Auth::attempt($credentials)) {
+        if (! Auth::attempt($credentials)) {
             return $this->error('Unauthorized');
         }
 
@@ -55,18 +61,23 @@ class AuthController extends Controller {
             'token_type' => 'Bearer',
         ]);
     }
-    public function user(Request $request) {
+
+    public function user(Request $request)
+    {
         return response()->json($request->user());
     }
-    public function logout(Request $request) {
+
+    public function logout(Request $request)
+    {
         $request->user()->tokens()->delete();
 
         return response()->json([
-            'message' => 'Successfully logged out'
+            'message' => 'Successfully logged out',
         ]);
     }
 
-    public function getUsers() {
+    public function getUsers()
+    {
         $users = User::all();
 
         return response()->json([
@@ -76,22 +87,22 @@ class AuthController extends Controller {
         ]);
     }
 
-
-    public function addUser(Request $request) {
+    public function addUser(Request $request)
+    {
         $request->validate([
             'name' => 'required|string',
             'email' => 'required|string|unique:users',
             'password' => 'required|string|min:6',
             'type' => 'required|string', // Validate that type is required and must be a string
         ]);
-    
+
         $user = new User([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'type' => $request->type, // Assign the type to the user
         ]);
-    
+
         if ($user->save()) {
             return response()->json([
                 'success' => true,
@@ -106,38 +117,124 @@ class AuthController extends Controller {
         }
     }
 
-    public function deleteUser(Request $request, $id) {
+    public function deleteUser(Request $request, $id)
+    {
         $user = User::find($id);
         $user->delete();
+
         return $this->success('User deleted successfully', $user);
     }
 
-    public function updateUser(Request $request) {
+    public function updateUser(Request $request)
+    {
         $this->validate($request, [
             'id' => 'required|exists:users,id', // Ensure that the user exists
             'name' => 'required|string',
-            'email' => 'required|string|email|unique:users,email,' . $request->id,
+            'email' => 'required|string|email|unique:users,email,'.$request->id,
             'type' => 'required|string',
             'password' => 'nullable|string|min:6', // Password is optional and should have a minimum length if provided
         ]);
-    
+
         $user = User::find($request->id);
-        if (!$user) {
+        if (! $user) {
             return $this->error('User not found', 404);
         }
-    
+
         $user->name = $request->name;
         $user->email = $request->email;
         $user->type = $request->type;
-    
+
         // Update the password only if it is provided
         if ($request->filled('password')) {
             $user->password = Hash::make($request->password);
         }
-    
+
         $user->save();
-    
+
         return $this->success('User updated successfully', $user);
     }
-    
+
+    public function redirectToGoogle()
+    {
+        return Socialite::driver('google')->redirect();
+    }
+
+    public function handleGoogleCallback()
+    {
+        try {
+            // Handle the OAuth callback
+            $googleUser = Socialite::driver('google')->user();
+
+            // Log the user data for debugging
+            Log::info('Google User Data', [
+                'id' => $googleUser->id,
+                'name' => $googleUser->name,
+                'email' => $googleUser->email,
+                'avatar' => $googleUser->avatar,
+            ]);
+
+            // Check if user exists with Google ID
+            $user = User::where('google_id', $googleUser->id)->first();
+
+            if (! $user) {
+                // Check if user exists with same email
+                $user = User::where('email', $googleUser->email)->first();
+
+                if ($user) {
+                    // Link Google account to existing user
+                    $user->update([
+                        'google_id' => $googleUser->id,
+                        'avatar' => $googleUser->avatar,
+                    ]);
+                    Log::info('Linked Google account to existing user', ['user_id' => $user->id]);
+                } else {
+                    // Create new user
+                    $user = User::create([
+                        'name' => $googleUser->name,
+                        'email' => $googleUser->email,
+                        'google_id' => $googleUser->id,
+                        'avatar' => $googleUser->avatar,
+                        'password' => Hash::make(uniqid()), // Random password
+                        'type' => 'customer', // Default user type
+                    ]);
+                    Log::info('Created new user from Google', ['user_id' => $user->id]);
+                }
+            }
+
+            // Generate API token
+            $tokenResult = $user->createToken('Personal Access Token');
+            $token = $tokenResult->plainTextToken;
+
+            // Prepare user data for frontend
+            $userData = [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'type' => $user->type,
+                'avatar' => $user->avatar,
+                'token' => $token,
+                'token_type' => 'Bearer',
+            ];
+
+            // Redirect to frontend with token and user data as query parameters
+            $frontendCallbackUrl = 'http://localhost:3000/auth/google/callback';
+            $userJson = json_encode($userData);
+
+            return redirect()->away("{$frontendCallbackUrl}?token={$token}&user=".urlencode($userJson));
+
+        } catch (\Laravel\Socialite\Two\InvalidStateException $e) {
+            Log::error('InvalidStateException: '.$e->getMessage());
+            $frontendCallbackUrl = 'http://localhost:3000/auth/google/callback';
+
+            return redirect()->away("{$frontendCallbackUrl}?error=".urlencode('Invalid state - please try again'));
+        } catch (\Exception $e) {
+            Log::error('Google OAuth Error: '.$e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+            // Redirect to frontend with error
+            $frontendCallbackUrl = 'http://localhost:3000/auth/google/callback';
+
+            return redirect()->away("{$frontendCallbackUrl}?error=".urlencode('Google authentication failed: '.$e->getMessage()));
+        }
+    }
 }
