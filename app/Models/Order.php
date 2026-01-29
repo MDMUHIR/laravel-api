@@ -16,6 +16,7 @@ class Order extends Model
         'payment_status',
         'name',
         'phone',
+        'phone_alt',
         'email',
         'line1',
         'line2',
@@ -23,14 +24,16 @@ class Order extends Model
         'country',
         'coupon',
         'total',
-        'notes'
+        'notes',
     ];
 
-    public function products() {
-        return $this->belongsToMany(Product::class, 'order_products', 'order_id', 'product_id')->withPivot('quantity', 'price');
+    public function products()
+    {
+        return $this->belongsToMany(Product::class, 'order_products', 'order_id', 'product_id')->withPivot('quantity', 'price')->with('images');
     }
 
-    public function user() {
+    public function user()
+    {
         return $this->belongsTo(User::class);
     }
 }
