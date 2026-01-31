@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BlogController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CouponController;
@@ -38,6 +39,11 @@ Route::get('products', [ProductController::class, 'getProducts']);
 Route::get('products/{id}', [ProductController::class, 'getSingleProduct']);
 Route::get('categories', [CategoryController::class, 'getCategories']);
 
+Route::get('blogs', [BlogController::class, 'getBlogs']);
+Route::get('blogs/{id}', [BlogController::class, 'getSingleBlog']);
+Route::get('blog-categories', [BlogController::class, 'getBlogCategories']);
+Route::get('blog-tags', [BlogController::class, 'getBlogTags']);
+
 Route::group(['prefix' => 'admin'], function () {
     Route::group(['middleware' => 'auth:sanctum'], function () {
         Route::group(['middleware' => 'admin'], function () {
@@ -62,6 +68,19 @@ Route::group(['prefix' => 'admin'], function () {
             Route::post('coupon/add', [CouponController::class, 'addCoupon']);
             Route::post('coupon/update', [CouponController::class, 'updateCoupon']);
             Route::delete('coupon/delete/{id}', [CouponController::class, 'deleteCoupon']);
+
+            Route::get('blogs', [BlogController::class, 'getBlogs']);
+            Route::post('blogs/add', [BlogController::class, 'addBlog']);
+            Route::post('blogs/update', [BlogController::class, 'updateBlog']);
+            Route::delete('blogs/delete/{id}', [BlogController::class, 'deleteBlog']);
+
+            Route::post('blog-categories/add', [BlogController::class, 'addBlogCategory']);
+            Route::post('blog-categories/update', [BlogController::class, 'updateBlogCategory']);
+            Route::delete('blog-categories/delete/{id}', [BlogController::class, 'deleteBlogCategory']);
+
+            Route::post('blog-tags/add', [BlogController::class, 'addBlogTag']);
+            Route::post('blog-tags/update', [BlogController::class, 'updateBlogTag']);
+            Route::delete('blog-tags/delete/{id}', [BlogController::class, 'deleteBlogTag']);
         });
     });
 });

@@ -217,14 +217,14 @@ class AuthController extends Controller
             ];
 
             // Redirect to frontend with token and user data as query parameters
-            $frontendCallbackUrl = 'http://localhost:3000/auth/google/callback';
+            $frontendCallbackUrl = env('FRONTEND_URL', 'http://localhost:3000').'/auth/google/callback';
             $userJson = json_encode($userData);
 
             return redirect()->away("{$frontendCallbackUrl}?token={$token}&user=".urlencode($userJson));
 
         } catch (\Laravel\Socialite\Two\InvalidStateException $e) {
             Log::error('InvalidStateException: '.$e->getMessage());
-            $frontendCallbackUrl = 'http://localhost:3000/auth/google/callback';
+            $frontendCallbackUrl = env('FRONTEND_URL', 'http://localhost:3000').'/auth/google/callback';
 
             return redirect()->away("{$frontendCallbackUrl}?error=".urlencode('Invalid state - please try again'));
         } catch (\Exception $e) {
@@ -232,7 +232,7 @@ class AuthController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
             // Redirect to frontend with error
-            $frontendCallbackUrl = 'http://localhost:3000/auth/google/callback';
+            $frontendCallbackUrl = env('FRONTEND_URL', 'http://localhost:3000').'/auth/google/callback';
 
             return redirect()->away("{$frontendCallbackUrl}?error=".urlencode('Google authentication failed: '.$e->getMessage()));
         }
