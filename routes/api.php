@@ -36,6 +36,7 @@ Route::group(['middleware' => ['web']], function () {
 });
 
 Route::get('products', [ProductController::class, 'getProducts']);
+Route::get('products/search', [ProductController::class, 'searchProducts']);
 Route::get('products/{id}', [ProductController::class, 'getSingleProduct']);
 Route::get('categories', [CategoryController::class, 'getCategories']);
 

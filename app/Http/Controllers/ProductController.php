@@ -148,4 +148,51 @@ class ProductController extends Controller
 
         return $this->success('Image deleted successfully');
     }
+
+    public function searchProducts(Request $request)
+    {
+        $query = Product::with('category', 'images');
+
+        if ($request->has('search') && ! empty($request->search)) {
+            $searchTerm = $request->search;
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('name', 'LIKE', '%'.$searchTerm.'%')
+                    ->orWhere('description', 'LIKE', '%'.$searchTerm.'%');
+            });
+        }
+
+        if ($request->has('category_id') && ! empty($request->category_id)) {
+            $query->where('category_id', $request->category_id);
+        }
+
+        if ($request->has('min_price') && ! empty($request->min_price)) {
+            $query->where('price', '>=', $request->min_price);
+        }
+
+        if ($request->has('max_price') && ! empty($request->max_price)) {
+            $query->where('price', '<=', $request->max_price);
+        }
+
+        if ($request->has('in_stock')) {
+            $inStock = filter_var($request->in_stock, FILTER_VALIDATE_BOOLEAN);
+            if ($inStock) {
+                $query->where('stock', '>', 0);
+            }
+        }
+
+        $sortBy = $request->get('sort_by', 'created_at');
+        $sortOrder = $request->get('sort_order', 'desc');
+
+        $allowedSortFields = ['name', 'price', 'created_at', 'stock'];
+        if (in_array($sortBy, $allowedSortFields)) {
+            $query->orderBy($sortBy, $sortOrder === 'asc' ? 'asc' : 'desc');
+        }
+
+        $perPage = $request->get('per_page', 12);
+        $perPage = min(max($perPage, 1), 100);
+
+        $products = $query->paginate($perPage);
+
+        return $this->success('Products retrieved successfully', $products);
+    }
 }
