@@ -15,9 +15,7 @@ class Blog extends Model
         'blog_category_id',
         'title',
         'slug',
-        'excerpt',
         'content',
-        'featured_image',
         'is_published',
         'is_featured',
         'views',
@@ -29,6 +27,8 @@ class Blog extends Model
         'is_featured' => 'boolean',
         'published_at' => 'datetime',
     ];
+
+    protected $with = ['images'];
 
     public function user()
     {
@@ -43,6 +43,11 @@ class Blog extends Model
     public function tags()
     {
         return $this->belongsToMany(BlogTag::class, 'blog_tag', 'blog_id', 'blog_tag_id');
+    }
+
+    public function images()
+    {
+        return $this->hasMany(BlogImage::class)->orderBy('sort_order');
     }
 
     public function scopePublished($query)
