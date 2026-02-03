@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BannerController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CategoryController;
@@ -39,6 +40,8 @@ Route::get('products', [ProductController::class, 'getProducts']);
 Route::get('products/search', [ProductController::class, 'searchProducts']);
 Route::get('products/{id}', [ProductController::class, 'getSingleProduct']);
 Route::get('categories', [CategoryController::class, 'getCategories']);
+
+Route::get('banners', [BannerController::class, 'getBanners']);
 
 Route::get('blogs', [BlogController::class, 'getBlogs']);
 Route::get('blogs/{id}', [BlogController::class, 'getSingleBlog']);
@@ -82,6 +85,11 @@ Route::group(['prefix' => 'admin'], function () {
             Route::post('blog-tags/add', [BlogController::class, 'addBlogTag']);
             Route::post('blog-tags/update', [BlogController::class, 'updateBlogTag']);
             Route::delete('blog-tags/delete/{id}', [BlogController::class, 'deleteBlogTag']);
+
+            Route::get('banners', [BannerController::class, 'getBanners']);
+            Route::post('banners/add', [BannerController::class, 'addBanner']);
+            Route::post('banners/update', [BannerController::class, 'updateBanner']);
+            Route::delete('banners/delete/{id}', [BannerController::class, 'deleteBanner']);
         });
     });
 });
