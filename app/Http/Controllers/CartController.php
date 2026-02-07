@@ -56,4 +56,18 @@ class CartController extends Controller
 
         return $this->success('Delete cart', $cart);
     }
+
+    public function toggleSelection(Request $request)
+    {
+        $cart = Cart::where('user_id', $request->user()->id)->where('id', $request->cart_id)->first();
+
+        if (! $cart) {
+            return $this->error('Cart item not found', 404);
+        }
+
+        $cart->is_selected = $request->is_selected;
+        $cart->save();
+
+        return $this->success('Cart selection updated', $cart);
+    }
 }

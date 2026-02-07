@@ -32,7 +32,11 @@ class OrderController extends Controller
         $order->notes = $request->notes;
         $order->save();
 
-        $cart = Cart::where('user_id', $request->user()->id)->get();
+        $cart = Cart::where('user_id', $request->user()->id)->where('is_selected', true)->get();
+
+        if ($cart->isEmpty()) {
+            return $this->error('No items selected for order', 400);
+        }
 
         foreach ($cart as $item) {
             $OrderProduct = new OrderProduct;
@@ -45,7 +49,7 @@ class OrderController extends Controller
             $total += $item->quantity * $item->price;
         }
 
-        Cart::where('user_id', $request->user()->id)->delete();
+        Cart::where('user_id', $request->user()->id)->where('is_selected', true)->delete();
 
         $order->total = $this->calculateTotals($request->coupon, $total);
         $order->save();

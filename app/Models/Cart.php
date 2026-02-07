@@ -14,10 +14,16 @@ class Cart extends Model
         'product_id',
         'quantity',
         'price',
-        'total'
+        'total',
+        'is_selected',
     ];
 
-    public function product() {
+    public function product()
+    {
         return $this->belongsTo(Product::class);
     }
+
+    protected $casts = [
+        'is_selected' => 'boolean',
+    ];
 }
