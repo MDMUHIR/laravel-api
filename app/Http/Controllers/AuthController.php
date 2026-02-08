@@ -156,11 +156,30 @@ class AuthController extends Controller
 
     public function redirectToGoogle()
     {
+        // Debug logging
+        Log::info('Google OAuth Redirect Initiated', [
+            'session_id' => session()->getId(),
+            'session_cookie' => config('session.cookie'),
+            'frontend_url' => config('app.frontend_url'),
+        ]);
+
+        // Store state in session explicitly
+        session()->put('google_oauth_initiated', true);
+        session()->save();
+
         return Socialite::driver('google')->redirect();
     }
 
     public function handleGoogleCallback()
     {
+        // Debug logging
+        Log::info('Google OAuth Callback Received', [
+            'session_id' => session()->getId(),
+            'query_params' => request()->all(),
+            'has_state' => request()->has('state'),
+            'has_code' => request()->has('code'),
+        ]);
+
         try {
             // Handle the OAuth callback
             $googleUser = Socialite::driver('google')->user();
@@ -217,14 +236,14 @@ class AuthController extends Controller
             ];
 
             // Redirect to frontend with token and user data as query parameters
-            $frontendCallbackUrl = env('FRONTEND_URL', 'http://localhost:3000').'/auth/google/callback';
+            $frontendCallbackUrl = config('app.frontend_url').'/auth/google/callback';
             $userJson = json_encode($userData);
 
             return redirect()->away("{$frontendCallbackUrl}?token={$token}&user=".urlencode($userJson));
 
         } catch (\Laravel\Socialite\Two\InvalidStateException $e) {
             Log::error('InvalidStateException: '.$e->getMessage());
-            $frontendCallbackUrl = env('FRONTEND_URL', 'http://localhost:3000').'/auth/google/callback';
+            $frontendCallbackUrl = config('app.frontend_url').'/auth/google/callback';
 
             return redirect()->away("{$frontendCallbackUrl}?error=".urlencode('Invalid state - please try again'));
         } catch (\Exception $e) {
@@ -232,7 +251,7 @@ class AuthController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
             // Redirect to frontend with error
-            $frontendCallbackUrl = env('FRONTEND_URL', 'http://localhost:3000').'/auth/google/callback';
+            $frontendCallbackUrl = config('app.frontend_url').'/auth/google/callback';
 
             return redirect()->away("{$frontendCallbackUrl}?error=".urlencode('Google authentication failed: '.$e->getMessage()));
         }
