@@ -97,8 +97,8 @@ Route::group(['prefix' => 'admin'], function () {
 Route::group(['middleware' => 'auth:sanctum'], function () {
 
     Route::get('cart', [CartController::class, 'getCart']);
-    Route::post('cart/add', [CartController::class, 'addToCart'])->middleware('throttle:sensitive');
-    Route::post('cart/update', [CartController::class, 'updateCart'])->middleware('throttle:sensitive');
+    Route::post('cart/add', [CartController::class, 'addToCart'])->middleware('throttle:cart');
+    Route::post('cart/update', [CartController::class, 'updateCart'])->middleware('throttle:cart');
     Route::delete('cart/delete/{id}', [CartController::class, 'deleteCart']);
     Route::post('cart/toggle-selection', [CartController::class, 'toggleSelection']);
 

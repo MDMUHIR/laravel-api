@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cart;
+use App\Models\Product;
 use Illuminate\Http\Request;
 
 class CartController extends Controller
@@ -17,6 +18,22 @@ class CartController extends Controller
     public function addToCart(Request $request)
     {
 
+        $this->validate($request, [
+            'product_id' => 'required|integer',
+            'quantity' => 'required|integer|min:1',
+            'price' => 'required|numeric',
+        ]);
+
+        $product = Product::find($request->product_id);
+        if (! $product) {
+            return $this->error('Product not found', 404);
+        }
+
+        // If product stock is set, ensure requested quantity does not exceed available stock
+        if (! is_null($product->stock) && $request->quantity > $product->stock) {
+            return $this->error('Requested quantity exceeds available stock', 400);
+        }
+
         $existCart = Cart::where('user_id', $request->user()->id)->where('product_id', $request->product_id)->first();
 
         if ($existCart) {
@@ -25,17 +42,17 @@ class CartController extends Controller
             $existCart->save();
 
             return $this->success('Add to cart', $existCart);
-        } else {
-            $cart = new Cart;
-            $cart->user_id = $request->user()->id;
-            $cart->product_id = $request->product_id;
-            $cart->quantity = $request->quantity;
-            $cart->price = $request->price;
-            $cart->total = $request->quantity * $request->price;
-            $cart->save();
-
-            return $this->success('Add to cart', $cart);
         }
+
+        $cart = new Cart;
+        $cart->user_id = $request->user()->id;
+        $cart->product_id = $request->product_id;
+        $cart->quantity = $request->quantity;
+        $cart->price = $request->price;
+        $cart->total = $request->quantity * $request->price;
+        $cart->save();
+
+        return $this->success('Add to cart', $cart);
     }
 
     public function updateCart(Request $request)
