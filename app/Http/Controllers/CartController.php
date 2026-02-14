@@ -37,7 +37,14 @@ class CartController extends Controller
         $existCart = Cart::where('user_id', $request->user()->id)->where('product_id', $request->product_id)->first();
 
         if ($existCart) {
-            $existCart->quantity += $request->quantity;
+            $newQuantity = $existCart->quantity + $request->quantity;
+
+            // If product stock is set, ensure new quantity does not exceed available stock
+            if (! is_null($product->stock) && $newQuantity > $product->stock) {
+                return $this->error('Requested quantity exceeds available stock', 400);
+            }
+
+            $existCart->quantity = $newQuantity;
             $existCart->total = $existCart->quantity * $existCart->price;
             $existCart->save();
 
@@ -58,7 +65,27 @@ class CartController extends Controller
     public function updateCart(Request $request)
     {
 
+        $this->validate($request, [
+            'cart_id' => 'required|integer',
+            'quantity' => 'required|integer|min:1',
+        ]);
+
         $cart = Cart::where('user_id', $request->user()->id)->where('id', $request->cart_id)->first();
+
+        if (! $cart) {
+            return $this->error('Cart item not found', 404);
+        }
+
+        $product = Product::find($cart->product_id);
+        if (! $product) {
+            return $this->error('Product not found', 404);
+        }
+
+        // If product stock is set, ensure requested quantity does not exceed available stock
+        if (! is_null($product->stock) && $request->quantity > $product->stock) {
+            return $this->error('Requested quantity exceeds available stock', 400);
+        }
+
         $cart->quantity = $request->quantity;
         $cart->total = $request->quantity * $cart->price;
         $cart->save();
