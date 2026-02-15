@@ -59,13 +59,12 @@ class OrderController extends Controller
                     $OrderProduct->price = $item->price;
                     $OrderProduct->save();
 
-                    // decrement stock if set
+                    // decrement stock if set (use atomic DB decrement)
                     if (! is_null($product->stock)) {
-                        $product->stock = $product->stock - $item->quantity;
-                        if ($product->stock < 0) {
-                            $product->stock = 0;
+                        $decrement = min($item->quantity, $product->stock);
+                        if ($decrement > 0) {
+                            $product->decrement('stock', $decrement);
                         }
-                        $product->save();
                     }
 
                     $total += $item->quantity * $item->price;
