@@ -142,4 +142,77 @@ class OrderController extends Controller
 
         return $this->success('Update order', $order);
     }
+
+    public function directOrder(Request $request)
+    {
+        $request->validate([
+            'product_id' => 'required|integer',
+            'quantity' => 'required|integer|min:1',
+            'price' => 'required|numeric',
+            'payment_method' => 'required|string',
+            'name' => 'required|string',
+            'phone' => 'required|string',
+            'email' => 'required|email',
+            'line1' => 'required|string',
+            'city' => 'required|string',
+            'country' => 'required|string',
+        ]);
+
+        $product = Product::where('id', $request->product_id)->first();
+
+        if (! $product) {
+            return $this->error('Product not found', 404);
+        }
+
+        if (! is_null($product->stock) && $request->quantity > $product->stock) {
+            return $this->error('Insufficient stock for product: '.$product->name, 400);
+        }
+
+        try {
+            $order = DB::transaction(function () use ($request, $product) {
+                $product = Product::where('id', $request->product_id)->lockForUpdate()->first();
+
+                $order = new Order;
+                $order->user_id = $request->user()->id;
+                $order->status = 'pending';
+                $order->payment_method = $request->payment_method;
+                $order->payment_status = 'pending';
+                $order->name = $request->name;
+                $order->phone = $request->phone;
+                $order->phone_alt = $request->phone_alt;
+                $order->email = $request->email;
+                $order->line1 = $request->line1;
+                $order->line2 = $request->line2;
+                $order->city = $request->city;
+                $order->country = $request->country;
+                $order->coupon = $request->coupon;
+                $order->notes = $request->notes;
+                $order->save();
+
+                $OrderProduct = new OrderProduct;
+                $OrderProduct->order_id = $order->id;
+                $OrderProduct->product_id = $request->product_id;
+                $OrderProduct->quantity = $request->quantity;
+                $OrderProduct->price = $request->price;
+                $OrderProduct->save();
+
+                if (! is_null($product->stock)) {
+                    $decrement = min($request->quantity, $product->stock);
+                    if ($decrement > 0) {
+                        $product->decrement('stock', $decrement);
+                    }
+                }
+
+                $total = $request->quantity * $request->price;
+                $order->total = $this->calculateTotals($request->coupon, $total);
+                $order->save();
+
+                return $order;
+            });
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 400);
+        }
+
+        return $this->success('Order placed successfully', $order);
+    }
 }

@@ -110,6 +110,7 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
 
     Route::get('orders', [OrderController::class, 'getOrder']);
     Route::post('orders/add', [OrderController::class, 'addOrder'])->middleware('throttle:sensitive');
+    Route::post('orders/direct', [OrderController::class, 'directOrder'])->middleware('throttle:sensitive');
 
     Route::get('logout', [AuthController::class, 'logout']);
     Route::get('user', [AuthController::class, 'user']);
