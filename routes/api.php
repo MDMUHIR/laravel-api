@@ -38,7 +38,7 @@ Route::group(['middleware' => ['web']], function () {
 
 Route::get('products', [ProductController::class, 'getProducts']);
 Route::get('products/search', [ProductController::class, 'searchProducts']);
-Route::get('products/{id}', [ProductController::class, 'getSingleProduct']);
+Route::get('products/{identifier}', [ProductController::class, 'getSingleProduct']);
 Route::get('categories', [CategoryController::class, 'getCategories']);
 
 Route::get('banners', [BannerController::class, 'getBanners']);
@@ -62,7 +62,13 @@ Route::group(['prefix' => 'admin'], function () {
             Route::post('products/add', [ProductController::class, 'addProduct']);
             Route::post('products/update', [ProductController::class, 'updateProduct']);
             Route::delete('products/delete/{id}', [ProductController::class, 'deleteProduct']);
+            Route::get('products/{slug}', [ProductController::class, 'getAdminProduct']);
             Route::delete('products/{productId}/images/{imageId}', [ProductController::class, 'deleteProductImage']);
+            Route::post('products/{id}/variants', [ProductController::class, 'addVariant']);
+            Route::post('variants/delete/{id}', [ProductController::class, 'deleteVariant']);
+            Route::match(['PUT', 'POST'], 'variants/{id}', [ProductController::class, 'updateVariant']);
+            Route::post('variants/{id}/images', [ProductController::class, 'addVariantImage']);
+            Route::delete('variants/{variantId}/images/{imageId}', [ProductController::class, 'deleteVariantImage']);
 
             Route::get('orders', [OrderController::class, 'getAdminOrders']);
             Route::get('orders/{id}', [OrderController::class, 'getAdminOrder']);
