@@ -12,6 +12,7 @@ class Cart extends Model
     protected $fillable = [
         'user_id',
         'product_id',
+        'variant_id',
         'quantity',
         'price',
         'total',
@@ -23,7 +24,31 @@ class Cart extends Model
         return $this->belongsTo(Product::class);
     }
 
+    public function variant()
+    {
+        return $this->belongsTo(ProductVariant::class);
+    }
+
     protected $casts = [
         'is_selected' => 'boolean',
     ];
+
+    public function getEffectivePriceAttribute()
+    {
+        if ($this->variant && $this->variant->offer_price) {
+            return $this->variant->offer_price;
+        }
+        if ($this->variant) {
+            return $this->variant->price;
+        }
+        return $this->price;
+    }
+
+    public function getEffectiveStockAttribute()
+    {
+        if ($this->variant) {
+            return $this->variant->stock;
+        }
+        return $this->product->stock;
+    }
 }

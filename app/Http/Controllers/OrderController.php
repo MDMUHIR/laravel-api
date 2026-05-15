@@ -7,6 +7,7 @@ use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\OrderProduct;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -14,13 +15,14 @@ class OrderController extends Controller
 {
     public function addOrder(Request $request)
     {
-        $cart = Cart::where('user_id', $request->user()->id)->where('is_selected', true)->get();
+        $cart = Cart::where('user_id', $request->user()->id)
+            ->where('is_selected', true)
+            ->get();
 
         if ($cart->isEmpty()) {
             return $this->error('No items selected for order', 400);
         }
 
-        // Wrap order creation and stock updates in a transaction
         try {
             $order = DB::transaction(function () use ($request, $cart) {
                 $total = 0;
@@ -44,34 +46,61 @@ class OrderController extends Controller
 
                 foreach ($cart as $item) {
                     $product = Product::where('id', $item->product_id)->lockForUpdate()->first();
-                    if (! $product) {
-                        throw new \Exception('Product not found: '.$item->product_id);
+                    if (!$product) {
+                        throw new \Exception('Product not found: ' . $item->product_id);
                     }
 
-                    if (! is_null($product->stock) && $item->quantity > $product->stock) {
-                        throw new \Exception('Insufficient stock for product: '.$product->name);
+                    $variant = null;
+                    $availableStock = null;
+
+                    if ($item->variant_id) {
+                        $variant = ProductVariant::where('id', $item->variant_id)
+                            ->lockForUpdate()
+                            ->first();
+                        if (!$variant) {
+                            throw new \Exception('Variant not found: ' . $item->variant_id);
+                        }
+                        $availableStock = $variant->stock;
+                    } else {
+                        $availableStock = $product->stock;
+                    }
+
+                    if ($availableStock !== null && $item->quantity > $availableStock) {
+                        $itemName = $product->name . ($variant ? ' - ' . $variant->color : '');
+                        throw new \Exception('Insufficient stock for product: ' . $itemName);
                     }
 
                     $OrderProduct = new OrderProduct;
                     $OrderProduct->order_id = $order->id;
                     $OrderProduct->product_id = $item->product_id;
+                    $OrderProduct->variant_id = $item->variant_id;
                     $OrderProduct->quantity = $item->quantity;
                     $OrderProduct->price = $item->price;
+
+                    if ($variant) {
+                        $OrderProduct->color = $variant->color;
+                        $OrderProduct->color_code = $variant->color_code;
+                    }
+
                     $OrderProduct->save();
 
-                    // decrement stock if set (use atomic DB decrement)
-                    if (! is_null($product->stock)) {
-                        $decrement = min($item->quantity, $product->stock);
+                    if ($availableStock !== null) {
+                        $decrement = min($item->quantity, $availableStock);
                         if ($decrement > 0) {
-                            $product->decrement('stock', $decrement);
+                            if ($variant) {
+                                $variant->decrement('stock', $decrement);
+                            } else {
+                                $product->decrement('stock', $decrement);
+                            }
                         }
                     }
 
                     $total += $item->quantity * $item->price;
                 }
 
-                // remove cart items that were selected
-                Cart::where('user_id', $request->user()->id)->where('is_selected', true)->delete();
+                Cart::where('user_id', $request->user()->id)
+                    ->where('is_selected', true)
+                    ->delete();
 
                 $order->total = $this->calculateTotals($request->coupon, $total);
                 $order->save();
@@ -103,24 +132,36 @@ class OrderController extends Controller
 
     public function getOrder(Request $request)
     {
-        $orders = Order::with('products.images')->where('user_id', $request->user()->id)->get();
+        $orders = Order::with([
+            'orderProducts.product.images',
+            'orderProducts.variant.images'
+        ])->where('user_id', $request->user()->id)->get();
 
-        // foreach($orders as $order){
-        //     $order->products;
-        // }
         return $this->success('Get orders', $orders);
     }
 
     public function getAdminOrders(Request $request)
     {
-        $orders = Order::with('products.images')->with('user')->get();
+        $orders = Order::with([
+            'orderProducts.product.images',
+            'orderProducts.variant.images',
+            'user'
+        ])->get();
 
         return $this->success('Get orders', $orders);
     }
 
     public function getAdminOrder(Request $request, $id)
     {
-        $order = Order::with('products.images')->with('user')->where('id', $id)->first();
+        $order = Order::with([
+            'orderProducts.product.images',
+            'orderProducts.variant.images',
+            'user'
+        ])->where('id', $id)->first();
+
+        if (!$order) {
+            return $this->error('Order not found', 404);
+        }
 
         return $this->success('Get single order', $order);
     }
@@ -128,16 +169,25 @@ class OrderController extends Controller
     public function updateAdminOrder(Request $request)
     {
         $order = Order::find($request->id);
+        if (!$order) {
+            return $this->error('Order not found', 404);
+        }
+
         $order->status = $request->status;
         $order->notes = $request->notes;
         $order->save();
 
         $products = $request->products;
-
-        foreach ($products as $product) {
-            $OrderProduct = OrderProduct::where('order_id', $order->id)->where('product_id', $product['id'])->first();
-            $OrderProduct->quantity = $product['pivot']['quantity'];
-            $OrderProduct->save();
+        if ($products) {
+            foreach ($products as $product) {
+                $OrderProduct = OrderProduct::where('order_id', $order->id)
+                    ->where('product_id', $product['id'])
+                    ->first();
+                if ($OrderProduct) {
+                    $OrderProduct->quantity = $product['pivot']['quantity'];
+                    $OrderProduct->save();
+                }
+            }
         }
 
         return $this->success('Update order', $order);
@@ -148,7 +198,6 @@ class OrderController extends Controller
         $request->validate([
             'product_id' => 'required|integer',
             'quantity' => 'required|integer|min:1',
-            'price' => 'required|numeric',
             'payment_method' => 'required|string',
             'name' => 'required|string',
             'phone' => 'required|string',
@@ -159,18 +208,41 @@ class OrderController extends Controller
         ]);
 
         $product = Product::where('id', $request->product_id)->first();
-
-        if (! $product) {
+        if (!$product) {
             return $this->error('Product not found', 404);
         }
 
-        if (! is_null($product->stock) && $request->quantity > $product->stock) {
-            return $this->error('Insufficient stock for product: '.$product->name, 400);
+        $variant = null;
+        $price = $request->price ?? $product->offer_price ?? $product->price;
+        $availableStock = null;
+
+        if ($request->variant_id) {
+            $variant = ProductVariant::where('id', $request->variant_id)
+                ->where('product_id', $request->product_id)
+                ->first();
+
+            if (!$variant) {
+                return $this->error('Variant not found', 404);
+            }
+
+            $price = $variant->offer_price ?? $variant->price;
+            $availableStock = $variant->stock;
+        } else {
+            $availableStock = $product->stock;
+        }
+
+        if ($availableStock !== null && $request->quantity > $availableStock) {
+            $itemName = $product->name . ($variant ? ' - ' . $variant->color : '');
+            return $this->error('Insufficient stock for product: ' . $itemName, 400);
         }
 
         try {
-            $order = DB::transaction(function () use ($request, $product) {
-                $product = Product::where('id', $request->product_id)->lockForUpdate()->first();
+            $order = DB::transaction(function () use ($request, $product, $variant, $price) {
+                if ($variant) {
+                    $variant = ProductVariant::where('id', $variant->id)->lockForUpdate()->first();
+                } else {
+                    $product = Product::where('id', $product->id)->lockForUpdate()->first();
+                }
 
                 $order = new Order;
                 $order->user_id = $request->user()->id;
@@ -192,18 +264,30 @@ class OrderController extends Controller
                 $OrderProduct = new OrderProduct;
                 $OrderProduct->order_id = $order->id;
                 $OrderProduct->product_id = $request->product_id;
+                $OrderProduct->variant_id = $request->variant_id ?? null;
                 $OrderProduct->quantity = $request->quantity;
-                $OrderProduct->price = $request->price;
+                $OrderProduct->price = $price;
+
+                if ($variant) {
+                    $OrderProduct->color = $variant->color;
+                    $OrderProduct->color_code = $variant->color_code;
+                }
+
                 $OrderProduct->save();
 
-                if (! is_null($product->stock)) {
-                    $decrement = min($request->quantity, $product->stock);
+                $availableStock = $variant ? $variant->stock : $product->stock;
+                if ($availableStock !== null) {
+                    $decrement = min($request->quantity, $availableStock);
                     if ($decrement > 0) {
-                        $product->decrement('stock', $decrement);
+                        if ($variant) {
+                            $variant->decrement('stock', $decrement);
+                        } else {
+                            $product->decrement('stock', $decrement);
+                        }
                     }
                 }
 
-                $total = $request->quantity * $request->price;
+                $total = $request->quantity * $price;
                 $order->total = $this->calculateTotals($request->coupon, $total);
                 $order->save();
 
