@@ -305,13 +305,18 @@ class ProductController extends Controller
 
     public function searchProducts(Request $request)
     {
-        $query = Product::with('category', 'images');
+        $query = Product::with('category', 'images', 'variants');
 
-        if ($request->has('search') && ! empty($request->search)) {
-            $searchTerm = $request->search;
+        $searchTerm = $request->get('q') ?? $request->get('search');
+        
+        if ($searchTerm && ! empty($searchTerm)) {
             $query->where(function ($q) use ($searchTerm) {
                 $q->where('name', 'LIKE', '%'.$searchTerm.'%')
-                    ->orWhere('description', 'LIKE', '%'.$searchTerm.'%');
+                    ->orWhere('description', 'LIKE', '%'.$searchTerm.'%')
+                    ->orWhereHas('variants', function ($v) use ($searchTerm) {
+                        $v->where('color', 'LIKE', '%'.$searchTerm.'%')
+                          ->orWhere('sku', 'LIKE', '%'.$searchTerm.'%');
+                    });
             });
         }
 
@@ -320,17 +325,34 @@ class ProductController extends Controller
         }
 
         if ($request->has('min_price') && ! empty($request->min_price)) {
-            $query->where('price', '>=', $request->min_price);
+            $query->where(function ($q) use ($request) {
+                $q->where('price', '>=', $request->min_price)
+                  ->orWhereHas('variants', function ($v) use ($request) {
+                      $v->where('price', '>=', $request->min_price)
+                        ->orWhere('offer_price', '>=', $request->min_price);
+                  });
+            });
         }
 
         if ($request->has('max_price') && ! empty($request->max_price)) {
-            $query->where('price', '<=', $request->max_price);
+            $query->where(function ($q) use ($request) {
+                $q->where('price', '<=', $request->max_price)
+                  ->orWhereHas('variants', function ($v) use ($request) {
+                      $v->where('price', '<=', $request->max_price)
+                        ->orWhere('offer_price', '<=', $request->max_price);
+                  });
+            });
         }
 
         if ($request->has('in_stock')) {
             $inStock = filter_var($request->in_stock, FILTER_VALIDATE_BOOLEAN);
             if ($inStock) {
-                $query->where('stock', '>', 0);
+                $query->where(function ($q) {
+                    $q->where('stock', '>', 0)
+                      ->orWhereHas('variants', function ($v) {
+                          $v->where('stock', '>', 0);
+                      });
+                });
             }
         }
 
