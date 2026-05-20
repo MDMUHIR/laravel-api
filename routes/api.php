@@ -107,6 +107,8 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::post('cart/update', [CartController::class, 'updateCart'])->middleware('throttle:cart');
     Route::delete('cart/delete/{id}', [CartController::class, 'deleteCart']);
     Route::post('cart/toggle-selection', [CartController::class, 'toggleSelection']);
+    Route::post('cart/select-all', [CartController::class, 'selectAll']);
+    Route::post('cart/deselect-all', [CartController::class, 'deselectAll']);
 
     Route::get('wishlist', [WishListController::class, 'getWishList']);
     Route::post('wishlist/add', [WishListController::class, 'addToWishList'])->middleware('throttle:sensitive');

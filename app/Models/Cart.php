@@ -19,6 +19,10 @@ class Cart extends Model
         'is_selected',
     ];
 
+    protected $attributes = [
+        'is_selected' => false,
+    ];
+
     public function product()
     {
         return $this->belongsTo(Product::class);
