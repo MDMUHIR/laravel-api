@@ -450,6 +450,17 @@ class ProductController extends Controller
         return $this->success('Product retrieved successfully', $product);
     }
 
+    public function getAdminVariant(Request $request, $id)
+    {
+        $variant = ProductVariant::with('product', 'images')->find($id);
+
+        if (!$variant) {
+            return $this->error('Variant not found', 404);
+        }
+
+        return $this->success('Variant retrieved successfully', $variant);
+    }
+
     public function deleteVariant(Request $request, $id)
     {
         $variant = ProductVariant::find($id);

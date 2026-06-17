@@ -66,6 +66,7 @@ Route::group(['prefix' => 'admin'], function () {
             Route::delete('products/{productId}/images/{imageId}', [ProductController::class, 'deleteProductImage']);
             Route::post('products/{id}/variants', [ProductController::class, 'addVariant']);
             Route::post('variants/delete/{id}', [ProductController::class, 'deleteVariant']);
+            Route::get('variants/{id}', [ProductController::class, 'getAdminVariant']);
             Route::match(['PUT', 'POST'], 'variants/{id}', [ProductController::class, 'updateVariant']);
             Route::post('variants/{id}/images', [ProductController::class, 'addVariantImage']);
             Route::delete('variants/{variantId}/images/{imageId}', [ProductController::class, 'deleteVariantImage']);
