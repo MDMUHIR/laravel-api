@@ -14,7 +14,8 @@ class VariantImageFactory extends Factory
     {
         return [
             'variant_id' => ProductVariant::factory(),
-            'image_path' => 'images/' . $this->faker->uuid() . '.jpg',
+            'url' => 'images/' . $this->faker->uuid() . '.jpg',
+            'is_featured' => false,
         ];
     }
 }

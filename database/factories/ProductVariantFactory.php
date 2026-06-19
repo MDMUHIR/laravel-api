@@ -12,11 +12,12 @@ class ProductVariantFactory extends Factory
 
     public function definition(): array
     {
+        $color = $this->faker->colorName();
+        $size = $this->faker->randomElement(['XS', 'S', 'M', 'L', 'XL', 'XXL']);
+
         return [
             'product_id' => Product::factory(),
             'sku' => strtoupper($this->faker->lexify('???')) . '-' . $this->faker->unique()->numerify('###'),
-            'color' => $this->faker->colorName(),
-            'color_code' => $this->faker->hexColor(),
             'price' => $this->faker->numberBetween(500, 5000),
             'offer_price' => $this->faker->optional()->randomFloat(2, 500, 5000),
             'stock' => $this->faker->numberBetween(0, 50),

@@ -84,7 +84,7 @@ class CartController extends Controller
 
                     continue;
                 }
-            } elseif ($product->has_variants) {
+            } elseif ($product->variants()->exists()) {
                 $errors[] = 'Item '.($index + 1).': Please select a variant';
 
                 continue;

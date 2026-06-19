@@ -11,8 +11,12 @@ class ProductImage extends Model
 
     protected $fillable = [
         'product_id',
-        'image_path',
-        'color',
+        'url',
+        'is_featured',
+    ];
+
+    protected $casts = [
+        'is_featured' => 'boolean',
     ];
 
     public function product()

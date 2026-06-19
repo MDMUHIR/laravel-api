@@ -15,8 +15,11 @@ class OrderProduct extends Model
         'variant_id',
         'quantity',
         'price',
-        'color',
-        'color_code',
+        'variant_attributes',
+    ];
+
+    protected $casts = [
+        'variant_attributes' => 'array',
     ];
 
     public function product()

@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\ProductVariant;
 use App\Models\VariantImage;
+use App\Models\VariantAttribute;
 use Illuminate\Database\Seeder;
 
 class ProductSeeder extends Seeder
@@ -27,15 +28,17 @@ class ProductSeeder extends Seeder
                 'price' => 2099,
                 'offer_price' => 1441,
                 'stock' => 23,
-                'has_variants' => true,
-                'status' => true,
+                'status' => 'active',
                 'category_id' => $category->id,
             ]
         );
 
         ProductImage::where('product_id', $product->id)->delete();
-        foreach (['images/1778527736-6a022df8d8ec8.jpg', 'images/1778599509-6a03465556aaa.jpg'] as $image) {
-            ProductImage::create(['product_id' => $product->id, 'image_path' => $image]);
+        foreach ([
+            ['url' => 'images/1778527736-6a022df8d8ec8.jpg', 'is_featured' => true],
+            ['url' => 'images/1778599509-6a03465556aaa.jpg', 'is_featured' => false],
+        ] as $image) {
+            ProductImage::create(array_merge(['product_id' => $product->id], $image));
         }
 
         $product->variants()->delete();
@@ -43,36 +46,31 @@ class ProductSeeder extends Seeder
         $greenVariant = ProductVariant::create([
             'product_id' => $product->id,
             'sku' => 'HOCO-HC2-GREEN',
-            'color' => 'Green',
-            'color_code' => '#008000',
             'price' => 1441,
             'offer_price' => 1441,
             'stock' => 0,
         ]);
-        VariantImage::create(['variant_id' => $greenVariant->id, 'image_path' => 'images/hoco-hc2-green-1.jpg']);
-        VariantImage::create(['variant_id' => $greenVariant->id, 'image_path' => 'images/hoco-hc2-green-2.jpg']);
+        VariantAttribute::create(['variant_id' => $greenVariant->id, 'attribute' => 'Color', 'value' => 'Green']);
+        VariantImage::create(['variant_id' => $greenVariant->id, 'url' => 'images/hoco-hc2-green-1.jpg', 'is_featured' => true]);
+        VariantImage::create(['variant_id' => $greenVariant->id, 'url' => 'images/hoco-hc2-green-2.jpg', 'is_featured' => false]);
 
         $blackVariant = ProductVariant::create([
             'product_id' => $product->id,
             'sku' => 'HOCO-HC2-BLACK',
-            'color' => 'Black',
-            'color_code' => '#000000',
             'price' => 1499,
             'offer_price' => 1399,
             'stock' => 15,
         ]);
-        VariantImage::create(['variant_id' => $blackVariant->id, 'image_path' => 'images/hoco-hc2-black-1.jpg']);
+        VariantAttribute::create(['variant_id' => $blackVariant->id, 'attribute' => 'Color', 'value' => 'Black']);
+        VariantImage::create(['variant_id' => $blackVariant->id, 'url' => 'images/hoco-hc2-black-1.jpg', 'is_featured' => true]);
 
         $camoVariant = ProductVariant::create([
             'product_id' => $product->id,
             'sku' => 'HOCO-HC2-CAMO',
-            'color' => 'Camouflage',
-            'color_code' => '#4B5320',
             'price' => 1550,
             'offer_price' => 1441,
             'stock' => 8,
         ]);
-
-        $product->update(['default_variant_id' => $greenVariant->id]);
+        VariantAttribute::create(['variant_id' => $camoVariant->id, 'attribute' => 'Color', 'value' => 'Camouflage']);
     }
 }

@@ -5,18 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class VariantImage extends Model
+class VariantAttribute extends Model
 {
     use HasFactory;
 
     protected $fillable = [
         'variant_id',
-        'url',
-        'is_featured',
-    ];
-
-    protected $casts = [
-        'is_featured' => 'boolean',
+        'attribute',
+        'value',
     ];
 
     public function variant()

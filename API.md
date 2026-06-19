@@ -14,19 +14,19 @@
 ## Public Endpoints (no auth required)
 
 ### GET `/products`
-Fetch all products with category, images, and variants.
+Fetch all products with category, images, variants, variant images, and variant attributes.
 ```
 GET /api/products
 ```
 
 ### GET `/products/search?q={term}&category_id={id}&min_price={}&max_price={}&in_stock={true|false}&sort_by={name|price|created_at|stock}&sort_order={asc|desc}&per_page={12}`
-Search/filter products with pagination.
+Search/filter products with pagination. Searches name, description, variant SKU, and variant attribute values.
 ```
-GET /api/products/search?q=shoes&category_id=1&min_price=10&max_price=100&in_stock=true&sort_by=price&sort_order=asc&per_page=20
+GET /api/products/search?q=red&category_id=1&min_price=10&max_price=100&in_stock=true&sort_by=price&sort_order=asc&per_page=20
 ```
 
 ### GET `/products/{id or slug}`
-Fetch a single product by numeric ID or slug string. Loads category, images, variants.images.
+Fetch a single product by numeric ID or slug string. Loads category, images, variants, variant images, variant attributes.
 ```
 GET /api/products/1
 GET /api/products/nike-air-max
@@ -41,72 +41,114 @@ All admin routes are under `/api/admin` and require `auth:sanctum` + `admin` mid
 ### Products
 
 #### GET `/admin/products/{slug}`
-Fetch a single product by slug for admin editing. Loads category, images, variants.images.
+Fetch a single product by slug for admin editing.
 ```
 GET /api/admin/products/my-product-slug
 ```
 
 #### POST `/admin/products/add`
-Create a new product. Accepts **multipart/form-data**.
+Create a new product. Accepts **multipart/form-data** or **application/json**.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `name` | string | yes | Product name |
 | `slug` | string | no | Auto-generated from name if omitted |
-| `description` | string | no |  |
-| `short_description` | string | no |  |
-| `price` | number | yes* | Required only if `has_variants=false` |
-| `offer_price` | number | no |  |
-| `stock` | integer | yes* | Required only if `has_variants=false` |
-| `category_id` | integer | yes |  |
-| `has_variants` | boolean | no | Set to `true` if product has color/size variants |
-| `images[]` | file[] | no | Multiple product-level images |
-| `image_colors[]` | string[] | no | Color label per image (parallel to images) |
+| `description` | string | no | |
+| `short_description` | string | no | |
+| `price` | number | no | Defaults to 0 |
+| `offer_price` | number | no | |
+| `stock` | integer | no | Defaults to 0 |
+| `category_id` | integer | no | Nullable |
+| `status` | string | no | `active`, `draft`, or `discontinued` (default: `active`) |
+| `images` | array | no | Array of image objects (see below) |
+| `images.*.url` | file/string | no | Upload file or URL string |
+| `images.*.is_featured` | boolean | no | Whether this is the primary image |
 | `variants` | array | no | Array of variant objects (see below) |
-| `variants.*.sku` | string | no | Auto-generated if omitted |
-| `variants.*.color` | string | no | e.g. "Red" |
-| `variants.*.color_code` | string | no | e.g. "#FF0000" |
-| `variants.*.price` | number | no |  |
-| `variants.*.offer_price` | number | no |  |
-| `variants.*.stock` | integer | no |  |
-| `variants.*.images[]` | file[] | no | Images for this specific variant |
 
-**Two modes:**
+**Variant object fields:**
 
-1. **Simple product** (`has_variants=false` or omitted):
-   Provide `price`, `stock`, and optional `images[]`, `offer_price`.
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `sku` | string | no | Auto-generated if omitted |
+| `price` | number | no | Defaults to 0 |
+| `offer_price` | number | no | |
+| `stock` | integer | no | Defaults to 0 |
+| `attributes` | array | no | Array of `{attribute, value}` objects |
+| `attributes.*.attribute` | string | yes | e.g. "Color", "Size" |
+| `attributes.*.value` | string | yes | e.g. "Red", "Medium" |
+| `images` | array | no | Array of image objects for this variant |
+| `images.*.url` | file/string | no | Upload file or URL string |
+| `images.*.is_featured` | boolean | no | |
 
-2. **Variable product** (`has_variants=true`):
-   Set `price=0`, `stock=0`, and send `variants` array. Each variant gets its own price/stock/images. The first variant becomes the `default_variant_id`.
+**Example JSON body:**
+```json
+{
+  "name": "V-Neck T-Shirt",
+  "price": "19.99",
+  "offer_price": "14.99",
+  "stock": 15,
+  "category_id": 1,
+  "status": "active",
+  "images": [
+    { "url": "/images/tshirt-size-chart.jpg", "is_featured": false }
+  ],
+  "variants": [
+    {
+      "sku": "TS-RED-M",
+      "price": "19.99",
+      "offer_price": "14.99",
+      "stock": 15,
+      "attributes": [
+        { "attribute": "Color", "value": "Red" },
+        { "attribute": "Size", "value": "Medium" }
+      ],
+      "images": [
+        { "url": "/images/tshirt-red-front.jpg", "is_featured": true }
+      ]
+    }
+  ]
+}
+```
 
 #### POST `/admin/products/update`
-Update an existing product. Accepts **multipart/form-data**.
+Update an existing product. Accepts **multipart/form-data** or **application/json**.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `product_id` | integer | yes | ID of product to update |
-| `name` | string | yes |  |
-| `slug` | string | no |  |
-| `description` | string | no |  |
-| `short_description` | string | no |  |
-| `price` | number | yes* | Required if `has_variants=false` |
-| `offer_price` | number | no |  |
-| `stock` | integer | yes* | Required if `has_variants=false` |
-| `category_id` | integer | yes |  |
-| `has_variants` | boolean | no |  |
-| `images[]` | file[] | no | New images to append |
-| `image_colors[]` | string[] | no |  |
+| `name` | string | yes | |
+| `slug` | string | no | |
+| `description` | string | no | |
+| `short_description` | string | no | |
+| `price` | number | no | |
+| `offer_price` | number | no | |
+| `stock` | integer | no | |
+| `category_id` | integer | no | Nullable |
+| `status` | string | no | `active`, `draft`, or `discontinued` |
+| `images` | array | no | New images to append |
 | `variants` | array | no | Full list of variants (see sync logic) |
-| `default_variant_id` | integer | no | Which variant is the default |
 
 **Variant sync logic during update:**
 - If a variant object has an `id` field → that existing variant is **updated**.
 - If a variant object has **no** `id` → a **new** variant is created.
-- Any existing variant IDs **not** present in the `variants` array are **deleted** (along with their images).
-- So you must send the **complete** list of desired variants every time.
+- Any existing variant IDs **not** present in the `variants` array are **deleted** (along with their images and attributes).
+- Send the **complete** list of desired variants every time.
+
+**Per-variant fields during update:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | integer | Existing variant ID to update (omit to create new) |
+| `sku` | string | |
+| `price` | number | |
+| `offer_price` | number | |
+| `stock` | integer | |
+| `attributes` | array | Replaces all existing attributes |
+| `images` | array | New images to append |
+| `images_to_keep` | integer[] | IDs of existing images to keep (others deleted) |
 
 #### DELETE `/admin/products/delete/{id}`
-Deletes product + all its images + all its variants + variant images + old single image.
+Deletes product + all its images + all its variants + variant images + variant attributes.
 
 #### DELETE `/admin/products/{productId}/images/{imageId}`
 Delete a single product-level image.
@@ -116,7 +158,7 @@ Delete a single product-level image.
 ### Variants
 
 #### GET `/admin/variants/{id}`
-Fetch a single variant. Loads `product` and `images` relations.
+Fetch a single variant. Loads `product`, `images`, and `attributes` relations.
 ```
 GET /api/admin/variants/5
 ```
@@ -129,57 +171,63 @@ GET /api/admin/variants/5
   "data": {
     "id": 5,
     "product_id": 1,
-    "sku": "NIKE-RED-1",
-    "color": "Red",
-    "color_code": "#FF0000",
-    "price": 99.99,
-    "offer_price": 79.99,
-    "stock": 50,
+    "sku": "TS-RED-M",
+    "price": 19.99,
+    "offer_price": 14.99,
+    "stock": 15,
     "created_at": "...",
     "updated_at": "...",
     "product": { ... },
     "images": [
-      { "id": 1, "variant_id": 5, "image_path": "images/..." }
+      { "id": 1, "variant_id": 5, "url": "images/tshirt-red-front.jpg", "is_featured": true }
+    ],
+    "attributes": [
+      { "id": 1, "variant_id": 5, "attribute": "Color", "value": "Red" },
+      { "id": 2, "variant_id": 5, "attribute": "Size", "value": "Medium" }
     ]
   }
 }
 ```
 
 #### POST `/admin/products/{id}/variants`
-Add a new variant to a product. Accepts **multipart/form-data**.
+Add a new variant to a product. Accepts **multipart/form-data** or **application/json**.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `sku` | string | no | Auto-generated if omitted |
-| `color` | string | no |  |
-| `color_code` | string | no |  |
 | `price` | number | no | Defaults to 0 |
-| `offer_price` | number | no |  |
+| `offer_price` | number | no | |
 | `stock` | integer | no | Defaults to 0 |
-| `images[]` | file[] | no | Images for this variant |
+| `attributes` | array | no | Array of `{attribute, value}` objects |
+| `attributes.*.attribute` | string | yes | |
+| `attributes.*.value` | string | yes | |
+| `images` | array | no | Array of image objects |
+| `images.*.url` | file/string | no | |
+| `images.*.is_featured` | boolean | no | |
 
 #### PUT or POST `/admin/variants/{id}`
-Update an existing variant. Accepts **multipart/form-data**.
+Update an existing variant. Accepts **multipart/form-data** or **application/json**.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `sku` | string |  |
-| `color` | string |  |
-| `color_code` | string |  |
-| `price` | number |  |
-| `offer_price` | number |  |
-| `stock` | integer |  |
-| `images[]` | file[] | New images to append |
+| `sku` | string | |
+| `price` | number | |
+| `offer_price` | number | |
+| `stock` | integer | |
+| `attributes` | array | Replaces all existing attributes |
+| `images` | array | New images to append |
+| `images_to_keep` | integer[] | IDs of existing images to keep |
 
 #### POST `/admin/variants/delete/{id}`
-Delete a variant + its images. If it was `default_variant_id`, the next variant becomes default.
+Delete a variant + its images + its attributes.
 
 #### POST `/admin/variants/{id}/images`
 Upload a single image to a variant. Accepts **multipart/form-data**.
 
 | Field | Type | Required |
 |-------|------|----------|
-| `image` | file | yes |
+| `url` | file/string | yes |
+| `is_featured` | boolean | no |
 
 #### DELETE `/admin/variants/{variantId}/images/{imageId}`
 Delete a single variant image.
@@ -233,7 +281,7 @@ All under `/api` with `auth:sanctum` middleware.
   "notes": ""
 }
 ```
-Creates order from **selected** cart items, deducts stock, clears selected cart items.
+Creates order from **selected** cart items, deducts stock, clears selected cart items. Stores a snapshot of variant attributes on each order product.
 
 **POST `/orders/direct` body:**
 ```json
@@ -274,51 +322,66 @@ Creates order from **selected** cart items, deducts stock, clears selected cart 
 ### Product
 | Column | Type | Notes |
 |--------|------|-------|
-| id | integer |  |
-| name | string |  |
-| slug | string | Unique |
-| description | text |  |
-| short_description | text |  |
-| price | decimal | 0 if has_variants |
-| offer_price | decimal | nullable |
-| stock | integer | 0 if has_variants |
-| image | string | Deprecated legacy field |
-| status | boolean |  |
-| category_id | integer | FK to categories |
-| has_variants | boolean |  |
-| default_variant_id | integer | FK to product_variants |
+| id | integer | |
+| name | string | |
+| slug | string | Unique, nullable |
+| description | text | Nullable |
+| short_description | text | Nullable |
+| price | decimal | |
+| offer_price | decimal | Nullable |
+| stock | integer | |
+| status | string | `active`, `draft`, or `discontinued` |
+| category_id | integer | Nullable, FK to categories |
 
 ### ProductVariant
 | Column | Type | Notes |
 |--------|------|-------|
-| id | integer |  |
+| id | integer | |
 | product_id | integer | FK to products |
 | sku | string | Unique |
-| color | string | e.g. "Red" |
-| color_code | string | e.g. "#FF0000" |
-| price | decimal |  |
-| offer_price | decimal | nullable |
-| stock | integer |  |
+| price | decimal | |
+| offer_price | decimal | Nullable |
+| stock | integer | |
 
 ### ProductImage
 | Column | Type | Notes |
 |--------|------|-------|
-| id | integer |  |
+| id | integer | |
 | product_id | integer | FK to products |
-| image_path | string | Relative path in public/images/ |
-| color | string | nullable, e.g. "Red" |
+| url | string | Relative path in public/images/ or URL |
+| is_featured | boolean | |
 
 ### VariantImage
 | Column | Type | Notes |
 |--------|------|-------|
-| id | integer |  |
+| id | integer | |
 | variant_id | integer | FK to product_variants |
-| image_path | string | Relative path in public/images/ |
+| url | string | Relative path in public/images/ or URL |
+| is_featured | boolean | |
+
+### VariantAttribute
+| Column | Type | Notes |
+|--------|------|-------|
+| id | integer | |
+| variant_id | integer | FK to product_variants |
+| attribute | string | e.g. "Color", "Size" |
+| value | string | e.g. "Red", "Medium" |
+
+### OrderProduct
+| Column | Type | Notes |
+|--------|------|-------|
+| id | integer | |
+| order_id | integer | FK to orders |
+| product_id | integer | FK to products |
+| variant_id | integer | Nullable, FK to product_variants |
+| quantity | integer | |
+| price | decimal | |
+| variant_attributes | json | Snapshot of variant attributes at time of order |
 
 ---
 
 ## Image Storage Convention
 
-All images are stored in `public/images/` as `{timestamp}-{uniqid}.{ext}`. The `image_path` field stores the relative path (e.g., `images/1712345678-abc123.jpg`).
+Images can be provided as either uploaded files or URL strings. Uploaded files are stored in `public/images/` as `{timestamp}-{uniqid}.{ext}`. The `url` field stores the relative path (e.g., `images/1712345678-abc123.jpg`).
 
-To display: prepend your backend domain, e.g., `https://yourdomain.com/{image_path}`.
+To display: prepend your backend domain, e.g., `https://yourdomain.com/{url}`.

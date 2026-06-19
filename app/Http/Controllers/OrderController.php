@@ -67,8 +67,15 @@ class OrderController extends Controller
                     }
 
                     if ($availableStock !== null && $item->quantity > $availableStock) {
-                        $itemName = $product->name.($variant ? ' - '.$variant->color : '');
+                        $itemName = $product->name.($variant ? ' ('.$variant->sku.')' : '');
                         throw new \Exception('Insufficient stock for product: '.$itemName);
+                    }
+
+                    $variantAttributes = null;
+                    if ($variant) {
+                        $variantAttributes = $variant->attributes->map(function ($attr) {
+                            return ['attribute' => $attr->attribute, 'value' => $attr->value];
+                        })->toArray();
                     }
 
                     $OrderProduct = new OrderProduct;
@@ -77,12 +84,7 @@ class OrderController extends Controller
                     $OrderProduct->variant_id = $item->variant_id;
                     $OrderProduct->quantity = $item->quantity;
                     $OrderProduct->price = $item->price;
-
-                    if ($variant) {
-                        $OrderProduct->color = $variant->color;
-                        $OrderProduct->color_code = $variant->color_code;
-                    }
-
+                    $OrderProduct->variant_attributes = $variantAttributes;
                     $OrderProduct->save();
 
                     if ($availableStock !== null) {
@@ -136,6 +138,7 @@ class OrderController extends Controller
         $orders = Order::with([
             'orderProducts.product.images',
             'orderProducts.variant.images',
+            'orderProducts.variant.attributes',
         ])->where('user_id', $request->user()->id)->get();
 
         return $this->success('Get orders', $orders);
@@ -146,6 +149,7 @@ class OrderController extends Controller
         $orders = Order::with([
             'orderProducts.product.images',
             'orderProducts.variant.images',
+            'orderProducts.variant.attributes',
             'user',
         ])->get();
 
@@ -157,6 +161,7 @@ class OrderController extends Controller
         $order = Order::with([
             'orderProducts.product.images',
             'orderProducts.variant.images',
+            'orderProducts.variant.attributes',
             'user',
         ])->where('id', $id)->first();
 
@@ -254,6 +259,7 @@ class OrderController extends Controller
             if ($variantId) {
                 $variant = ProductVariant::where('id', $variantId)
                     ->where('product_id', $productId)
+                    ->with('attributes')
                     ->first();
 
                 if (! $variant) {
@@ -265,7 +271,7 @@ class OrderController extends Controller
                 $price = $price ?? ($variant->offer_price ?? $variant->price);
                 $availableStock = $variant->stock;
             } else {
-                if ($product->has_variants) {
+                if ($product->variants()->exists()) {
                     $errors[] = 'Item '.($index + 1).': Please select a variant';
 
                     continue;
@@ -330,18 +336,20 @@ class OrderController extends Controller
                         throw new \Exception('Insufficient stock for product: '.($product->name ?? ''));
                     }
 
+                    $variantAttributes = null;
+                    if ($item['variant']) {
+                        $variantAttributes = $item['variant']->attributes->map(function ($attr) {
+                            return ['attribute' => $attr->attribute, 'value' => $attr->value];
+                        })->toArray();
+                    }
+
                     $OrderProduct = new OrderProduct;
                     $OrderProduct->order_id = $order->id;
                     $OrderProduct->product_id = $item['product']->id;
                     $OrderProduct->variant_id = $item['variant'] ? $item['variant']->id : null;
                     $OrderProduct->quantity = $item['quantity'];
                     $OrderProduct->price = $item['price'];
-
-                    if ($item['variant']) {
-                        $OrderProduct->color = $item['variant']->color;
-                        $OrderProduct->color_code = $item['variant']->color_code;
-                    }
-
+                    $OrderProduct->variant_attributes = $variantAttributes;
                     $OrderProduct->save();
 
                     if ($availableStock !== null) {
