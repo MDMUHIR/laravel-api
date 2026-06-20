@@ -11,18 +11,29 @@ class Order extends Model
 
     protected $fillable = [
         'user_id',
+        'order_number',
         'status',
         'payment_method',
         'payment_status',
         'name',
+        'email',
         'phone',
         'phone_alt',
-        'email',
         'line1',
         'line2',
+        'district',
         'city',
         'country',
-        'coupon',
+        'currency',
+        'subtotal',
+        'delivery_charge',
+        'discount',
+        'discount_type',
+        'coupon_code',
+        'shipping_method',
+        'estimated_delivery_days',
+        'total_items',
+        'total_quantity',
         'total',
         'notes',
     ];
@@ -30,13 +41,18 @@ class Order extends Model
     public function products()
     {
         return $this->belongsToMany(Product::class, 'order_products', 'order_id', 'product_id')
-            ->withPivot('quantity', 'price', 'variant_id', 'variant_attributes')
+            ->withPivot('quantity', 'price', 'variant_id', 'attributes')
             ->with('images');
     }
 
-    public function orderProducts()
+    public function items()
     {
-        return $this->hasMany(OrderProduct::class);
+        return $this->hasMany(OrderProduct::class, 'order_id');
+    }
+
+    public function statusHistories()
+    {
+        return $this->hasMany(OrderStatusHistory::class, 'order_id');
     }
 
     public function user()

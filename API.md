@@ -261,59 +261,164 @@ All under `/api` with `auth:sanctum` middleware.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/orders` | Get user's orders (with products + variants) |
+| GET | `/orders` | Get user's orders |
 | POST | `/orders/add` | Create order from selected cart items |
 | POST | `/orders/direct` | Buy now (skips cart) |
 
-**POST `/orders/add` body:**
+**POST `/orders/add` / `/orders/direct` body:**
+
+Both endpoints accept the same order structure. Fields can be at the top level or nested in groups.
+
 ```json
 {
   "payment_method": "cod",
-  "name": "John",
-  "phone": "123456789",
-  "phone_alt": "",
-  "email": "john@example.com",
-  "line1": "Address",
-  "line2": "",
-  "city": "City",
-  "country": "Country",
-  "coupon": "DISCOUNT10",
+
+  "customer": {
+    "name": "John",
+    "email": "john@example.com",
+    "phone": "123456789",
+    "phone_alt": ""
+  },
+
+  "shipping_address": {
+    "line1": "Address",
+    "line2": "",
+    "district": "Central",
+    "city": "City",
+    "country": "Country"
+  },
+
+  "pricing": {
+    "currency": "BDT",
+    "delivery_charge": 5.00,
+    "coupon_code": "DISCOUNT10",
+    "discount": 10,
+    "discount_type": "fixed"
+  },
+
+  "shipping": {
+    "method": "standard",
+    "estimated_delivery_days": 3
+  },
+
   "notes": ""
 }
 ```
-Creates order from **selected** cart items, deducts stock, clears selected cart items. Stores a snapshot of variant attributes on each order product.
 
-**POST `/orders/direct` body:**
+For backward compatibility, flat field names (`name`, `email`, `phone`, `line1`, `city`, `coupon`, etc.) are also accepted.
+
+**`/orders/direct` additionally accepts `items`:**
 ```json
 {
-  "payment_method": "cod",
-  "name": "John",
-  "phone": "123456789",
-  "email": "john@example.com",
-  "line1": "Address",
-  "city": "City",
-  "country": "Country",
+  ...
   "items": [{ "product_id": 1, "variant_id": 5, "quantity": 2 }]
 }
 ```
-`items` can be a single item object or an array. If omitted, falls back to top-level `product_id`, `variant_id`, `quantity` fields.
+
+**Order Response Format:**
+```json
+{
+  "id": 1,
+  "order_number": "ORD-20260620-0001",
+  "customer_id": 3,
+  "status": "pending",
+  "payment_method": "cod",
+  "payment_status": "pending",
+
+  "customer": {
+    "name": "John",
+    "email": "john@example.com",
+    "phone": "123456789",
+    "phone_alt": ""
+  },
+
+  "shipping_address": {
+    "line1": "Address",
+    "line2": "",
+    "district": "Central",
+    "city": "City",
+    "country": "Country"
+  },
+
+  "pricing": {
+    "currency": "BDT",
+    "subtotal": 59.98,
+    "delivery_charge": 5.00,
+    "discount": 10,
+    "discount_type": "fixed",
+    "coupon_code": "DISCOUNT10",
+    "total": 54.98
+  },
+
+  "shipping": {
+    "method": "standard",
+    "estimated_delivery_days": 3
+  },
+
+  "summary": {
+    "total_items": 2,
+    "total_quantity": 3
+  },
+
+  "items": [
+    {
+      "id": 1,
+      "product_id": 1,
+      "variant_id": 5,
+      "name": "V-Neck T-Shirt",
+      "slug": "v-neck-t-shirt",
+      "sku": "TS-RED-M",
+      "image": "images/tshirt-red-front.jpg",
+      "attributes": [
+        { "attribute": "Color", "value": "Red" },
+        { "attribute": "Size", "value": "Medium" }
+      ],
+      "original_price": 29.99,
+      "unit_price": 19.99,
+      "discount": 10.00,
+      "quantity": 2,
+      "line_total": 39.98,
+      "stock_snapshot": { "variant_id": 5, "stock": 15 }
+    }
+  ],
+
+  "status_history": [
+    {
+      "status": "pending",
+      "label": "Order Placed",
+      "note": null,
+      "created_by": "customer",
+      "created_at": "2026-06-20T12:00:00+00:00"
+    }
+  ],
+
+  "notes": null,
+  "created_at": "2026-06-20T12:00:00+00:00",
+  "updated_at": "2026-06-20T12:00:00+00:00"
+}
+```
 
 ### Admin (auth + admin required)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/admin/orders` | List all orders |
+| GET | `/admin/orders` | List all orders (with user info) |
 | GET | `/admin/orders/{id}` | Get single order details |
-| POST | `/admin/orders/update` | Update order status/notes |
+| POST | `/admin/orders/update` | Update order status, notes, items |
 
 **POST `/admin/orders/update` body:**
 ```json
 {
   "id": 1,
   "status": "shipped",
-  "notes": "Shipped via DHL"
+  "status_note": "Shipped via DHL",
+  "payment_status": "paid",
+  "delivery_charge": 7.00,
+  "shipping_method": "dhl",
+  "notes": "Updated by admin"
 }
 ```
+When `status` changes, a new entry is automatically added to `status_history`.
 
 ---
 

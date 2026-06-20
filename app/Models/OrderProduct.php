@@ -13,13 +13,23 @@ class OrderProduct extends Model
         'order_id',
         'product_id',
         'variant_id',
+        'name',
+        'slug',
+        'sku',
+        'image',
+        'attributes',
+        'original_price',
+        'unit_price',
+        'discount',
         'quantity',
         'price',
-        'variant_attributes',
+        'line_total',
+        'stock_snapshot',
     ];
 
     protected $casts = [
-        'variant_attributes' => 'array',
+        'attributes' => 'array',
+        'stock_snapshot' => 'array',
     ];
 
     public function product()
