@@ -6,6 +6,7 @@ use App\Http\Controllers\BlogController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CouponController;
+use App\Http\Controllers\DeliveryChargeController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\WishListController;
@@ -42,6 +43,8 @@ Route::get('products/{identifier}', [ProductController::class, 'getSingleProduct
 Route::get('categories', [CategoryController::class, 'getCategories']);
 
 Route::get('banners', [BannerController::class, 'getBanners']);
+
+Route::get('delivery-charges', [DeliveryChargeController::class, 'getDeliveryCharges']);
 
 Route::get('blogs', [BlogController::class, 'getBlogs']);
 Route::get('blogs/{id}', [BlogController::class, 'getSingleBlog']);
@@ -97,6 +100,11 @@ Route::group(['prefix' => 'admin'], function () {
             Route::post('banners/add', [BannerController::class, 'addBanner']);
             Route::post('banners/update', [BannerController::class, 'updateBanner']);
             Route::delete('banners/delete/{id}', [BannerController::class, 'deleteBanner']);
+
+            Route::get('delivery-charges', [DeliveryChargeController::class, 'getDeliveryCharges']);
+            Route::post('delivery-charges/add', [DeliveryChargeController::class, 'addDeliveryCharge']);
+            Route::post('delivery-charges/update', [DeliveryChargeController::class, 'updateDeliveryCharge']);
+            Route::delete('delivery-charges/delete/{id}', [DeliveryChargeController::class, 'deleteDeliveryCharge']);
         });
     });
 });

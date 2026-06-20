@@ -317,6 +317,57 @@ Creates order from **selected** cart items, deducts stock, clears selected cart 
 
 ---
 
+## Delivery Charges
+
+### Public (no auth)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/delivery-charges` | List all active delivery charges |
+
+### Admin (auth + admin required)
+
+All under `/api/admin` with `auth:sanctum` + `admin` middleware.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/admin/delivery-charges` | List all delivery charges |
+| POST | `/admin/delivery-charges/add` | Add a delivery charge |
+| POST | `/admin/delivery-charges/update` | Update a delivery charge |
+| DELETE | `/admin/delivery-charges/delete/{id}` | Delete a delivery charge |
+
+**POST `/admin/delivery-charges/add` body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | yes | e.g. "Inside City", "Outside City" |
+| `charge` | number | yes | Delivery fee amount |
+| `minimum_order` | number | no | Minimum order for this rate (null = no minimum) |
+| `status` | boolean | no | Defaults to `true` |
+
+**POST `/admin/delivery-charges/update` body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | integer | yes | Delivery charge ID |
+| `name` | string | yes | |
+| `charge` | number | yes | |
+| `minimum_order` | number | no | |
+| `status` | boolean | no | |
+
+### Data Model
+
+### DeliveryCharge
+| Column | Type | Notes |
+|--------|------|-------|
+| id | integer | |
+| name | string | e.g. "Inside City" |
+| charge | decimal | Delivery fee |
+| minimum_order | decimal | Nullable, minimum order amount for this rate |
+| status | boolean | Active/inactive |
+
+---
+
 ## Data Model
 
 ### Product
