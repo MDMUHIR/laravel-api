@@ -298,6 +298,8 @@ class OrderController extends Controller
             }
         }
 
+        $this->updateOrderTotals($order, $request);
+
         return $this->success('Order updated successfully', $this->formatOrder($order->fresh()->load('items', 'statusHistories')));
     }
 
@@ -410,17 +412,17 @@ class OrderController extends Controller
         $order->total_quantity = $totalQuantity;
         $order->subtotal = $subtotal;
 
-        $total = $subtotal + ($order->delivery_charge ?? 0);
+        $discountedSubtotal = $subtotal;
 
         if ($order->discount > 0) {
             if ($order->discount_type === 'percentage') {
-                $total = $total - ($total * $order->discount / 100);
+                $discountedSubtotal = $subtotal - ($subtotal * $order->discount / 100);
             } else {
-                $total = $total - $order->discount;
+                $discountedSubtotal = $subtotal - $order->discount;
             }
         }
 
-        $order->total = max($total, 0);
+        $order->total = max($discountedSubtotal, 0) + ($order->delivery_charge ?? 0);
         $order->save();
     }
 
