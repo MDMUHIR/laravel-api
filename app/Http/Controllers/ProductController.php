@@ -21,9 +21,13 @@ class ProductController extends Controller
 
     public function addProduct(Request $request)
     {
+        if ($request->has('slug') && $request->slug === '') {
+            $request->merge(['slug' => null]);
+        }
+
         $rules = [
             'name' => 'required',
-            'slug' => 'nullable|unique:products,slug',
+            'slug' => 'nullable|string|unique:products,slug',
             'description' => 'nullable',
             'short_description' => 'nullable',
             'price' => 'nullable|numeric|min:0',
@@ -31,7 +35,7 @@ class ProductController extends Controller
             'stock' => 'nullable|integer|min:0',
             'category_id' => 'nullable|exists:categories,id',
             'status' => 'nullable|string|in:active,draft,discontinued',
-            'images' => 'nullable|array',
+            'images' => 'nullable',
             'variants' => 'nullable|array',
             'variants.*.sku' => 'nullable|string',
             'variants.*.price' => 'nullable|numeric|min:0',
@@ -40,7 +44,7 @@ class ProductController extends Controller
             'variants.*.attributes' => 'nullable|array',
             'variants.*.attributes.*.attribute' => 'required_with:variants.*.attributes|string',
             'variants.*.attributes.*.value' => 'required_with:variants.*.attributes|string',
-            'variants.*.images' => 'nullable|array',
+            'variants.*.images' => 'nullable',
         ];
 
         $this->validate($request, $rules);
@@ -141,10 +145,14 @@ class ProductController extends Controller
 
     public function updateProduct(Request $request)
     {
+        if ($request->has('slug') && $request->slug === '') {
+            $request->merge(['slug' => null]);
+        }
+
         $rules = [
             'product_id' => 'required|exists:products,id',
             'name' => 'required',
-            'slug' => 'nullable|unique:products,slug,'.$request->product_id,
+            'slug' => 'nullable|string|unique:products,slug,'.$request->product_id,
             'description' => 'nullable',
             'short_description' => 'nullable',
             'price' => 'nullable|numeric|min:0',
@@ -152,7 +160,7 @@ class ProductController extends Controller
             'stock' => 'nullable|integer|min:0',
             'category_id' => 'nullable|exists:categories,id',
             'status' => 'nullable|string|in:active,draft,discontinued',
-            'images' => 'nullable|array',
+            'images' => 'nullable',
             'variants' => 'nullable|array',
             'variants.*.id' => 'nullable|integer',
             'variants.*.sku' => 'nullable|string',
@@ -162,7 +170,7 @@ class ProductController extends Controller
             'variants.*.attributes' => 'nullable|array',
             'variants.*.attributes.*.attribute' => 'required_with:variants.*.attributes|string',
             'variants.*.attributes.*.value' => 'required_with:variants.*.attributes|string',
-            'variants.*.images' => 'nullable|array',
+            'variants.*.images' => 'nullable',
             'variants.*.images_to_keep' => 'nullable|array',
             'variants.*.images_to_keep.*' => 'integer',
         ];
@@ -468,7 +476,7 @@ class ProductController extends Controller
             'attributes' => 'nullable|array',
             'attributes.*.attribute' => 'required_with:attributes|string',
             'attributes.*.value' => 'required_with:attributes|string',
-            'images' => 'nullable|array',
+            'images' => 'nullable',
         ]);
 
         $product = Product::find($id);
@@ -556,7 +564,7 @@ class ProductController extends Controller
             'attributes' => 'nullable|array',
             'attributes.*.attribute' => 'required_with:attributes|string',
             'attributes.*.value' => 'required_with:attributes|string',
-            'images' => 'nullable|array',
+            'images' => 'nullable',
             'images_to_keep' => 'nullable|array',
             'images_to_keep.*' => 'integer',
         ]);
